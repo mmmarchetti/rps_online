@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block content %}
+  <table id="data" class="table table-striped">
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Username</th>
+        <th>Number of wins</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for person in boards %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td><a href="{{ url_for('profile_page', username =person.username ) }}" > {{ person.username }} </a></td>
+          <td>{{ person.wins }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    
+  </table>
+{% endblock content %}

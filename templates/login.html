@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock css %}
+
+{% block content %}
+<body>
+    <form class="form-signin", method="POST", action="{{url_for('login_page')}}">
+        <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+
+        {{ form.csrf_token }}
+
+        {{ form.email.label(class="form-label") }}
+        {{ form.email(class="form-control") }}
+        <ul class = "error">
+            {% for error in form.email.errors %}
+            <li> {{ error }}</li> 
+            {% endfor %}
+        </ul>
+        
+        {{ form.password.label(class="form-label") }}
+        {{ form.password(class="form-control") }}
+        <p>Not yet registered? <a href="{{ url_for('signup_page') }}" class="link-info">Register now!</a></p>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <p id="error">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {{ form.submit(class="btn btn-dark") }}
+
+        
+    </form>
+</body> 
+{% endblock content%}
