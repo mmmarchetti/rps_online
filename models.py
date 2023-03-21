@@ -134,13 +134,15 @@ class User:
             Optional[flask.redirect]: A redirect to the user's profile page if login successful,
             otherwise a redirect to the home page.
         """
-        user_list = list(users.find({}))
-        if user_list:
-            user_found = users.find_one({"email": request.form.get('email')})
 
-            if user_found and bcrypt.checkpw(request.form.get('password').encode(),
-                                             user_found['password'].encode()):
+        if len(list(users.find({}))) > 0:
+            user_found: dict = users.find_one({"email": request.form.get('email')})
+
+            if user_found and bcrypt.hashpw(request.form.get('password').encode(),
+                                            user_found['salt']) == user_found['password']:
+
                 return self.start_session(user_found)
 
         flash("Can't login due to wrong password or invalid email.")
+
         return redirect('/')
