@@ -1,11 +1,11 @@
-from typing import Union, Tuple, Dict
-
 from flask import Flask, render_template, url_for, session, redirect, jsonify, request, flash, Response
+from src.player import is_valid_username, is_available_username, handle_player_choice
+from src.forms import RegistrationForm, LoginForm, JoinRoom, EditUserForm
 from flask_socketio import SocketIO, join_room, leave_room
+from typing import Union, Tuple, Dict
 from dotenv import load_dotenv
-from database import users
-from models import User
-from forms import *
+from src.database import users
+from src.models import User
 import random
 import string
 import html
@@ -22,14 +22,11 @@ app.secret_key = os.environ.get("SECRET_KEY")
 # Start SocketIo
 socketio = SocketIO(app, cors_allowed_origins='*')
 
-
 # Socket global variables
 players = {}
-choice = {'choice1': '',
-          'choice2': ''}
 
 
-def _generate_room_code(string_length: int) -> str:
+def generate_room_code(string_length: int) -> str:
     """
     Generate a random string of uppercase letters with the given length.
 
@@ -40,118 +37,6 @@ def _generate_room_code(string_length: int) -> str:
         str: A random string of uppercase letters.
     """
     return ''.join(random.choices(string.ascii_uppercase, k=string_length))
-
-
-def _get_winner(choice1: str, choice2: str) -> str:
-    """
-    Determine the winner of the game based on the choices made by player 1 and player 2.
-
-    Args:
-        choice1: A string representing the choice made by player 1.
-        choice2: A string representing the choice made by player 2.
-
-    Returns:
-        A string indicating the result of the game. Can be "player1_win", "player2_win", or "TIE".
-    """
-    if choice1 == choice2:
-        return 'TIE'
-    elif choice1 == 'rock':
-        if choice2 == 'scissors':
-            return 'player1_win'
-        else:
-            return 'player2_win'
-    elif choice1 == 'scissors':
-        if choice2 == 'paper':
-            return 'player1_win'
-        else:
-            return 'player2_win'
-    else:
-        if choice2 == 'rock':
-            return 'player1_win'
-        else:
-            return 'player2_win'
-
-
-def _update_winner(result: str, player1: str, player2: str) -> None:
-    """
-    Update the number of wins for the winner of the game in the database.
-
-    Args:
-        result: A string indicating the result of the game. Can be "player1_win", "player2_win", or "TIE".
-        player1: A string representing the username of player 1.
-        player2: A string representing the username of player 2.
-
-    Returns:
-        None
-    """
-    if result == 'player1_win':
-        user_wins = users.find_one({"username": player1})['wins']
-        users.find_one_and_update({"username": player1}, {"$set": {'wins': user_wins + 1}})
-    elif result == 'player2_win':
-        user_wins = users.find_one({"username": player2})['wins']
-        users.find_one_and_update({"username": player2}, {"$set": {'wins': user_wins + 1}})
-
-
-def _handle_player_choice(data: Dict[str, str], player_choice: str) -> None:
-    """
-    Handle a player's choice of rock, paper, or scissors, and update the game state and send results to the clients.
-
-    Args:
-        data: A dictionary containing information about the game state.
-              Requires the keys "player1", "player2", and "room_id" to be present.
-        player_choice: A string representing the player's choice of rock, paper, or scissors.
-
-    Returns:
-        None
-    """
-    global choice
-
-    if player_choice == "player1":
-        choice['choice1'] = data['choice']
-        # other_player = data['player2']
-    else:
-        choice['choice2'] = data['choice']
-        # other_player = data['player1']
-
-    choice1 = choice['choice1']
-    choice2 = choice['choice2']
-
-    # If both players have made a choice, determine the winner and update the game state
-    if choice1 and choice2:
-        result = _get_winner(choice1, choice2)
-        _update_winner(result, data['player1'], data['player2'])
-        socketio.emit('result', {'result': result}, room=data['room_id'])
-        choice['choice1'] = ''
-        choice['choice2'] = ''
-    else:
-        # If the other player hasn't made a choice yet, wait for them to do so
-        socketio.emit('wait', {'person_waiting': data[player_choice]}, room=data['room_id'])
-
-
-def _is_valid_username(username: str) -> bool:
-    """
-    Check if a given username is valid.
-
-    Args:
-        username (str): The username to check.
-
-    Returns:
-        bool: True if the username is valid, False otherwise.
-    """
-    return '/' not in username
-
-
-def _is_available_username(username: str) -> bool:
-    """
-    Check if a given username is available.
-
-    Args:
-        username (str): The username to check.
-
-    Returns:
-        bool: True if the username is available, False otherwise.
-    """
-    return users.find_one({"username": username}) is None
 
 
 @app.route('/', methods=["POST", "GET"])
@@ -189,7 +74,7 @@ def signup_page() -> Union[redirect, str]:
     registration_form = RegistrationForm()
 
     if registration_form.validate_on_submit():
-        return redirect('/signup/success')
+        return User().signup()
 
     return render_template('register.html', form=registration_form)
 
@@ -234,7 +119,7 @@ def signout_page() -> None:
     Returns:
         None
     """
-    User().signout()
+    return User().signout()
 
 
 @app.route("/profile/")
@@ -266,25 +151,15 @@ def profile_page(username: str) -> Union[str, Tuple[Response, int]]:
        """
 
     user = users.find_one({"username": username})
-    user_board = users.find({}).sort("wins", -1)
-    sorted_user_board = [user for user in user_board]
-    user_rank = sorted_user_board.index(user) + 1
-
-    if user and 'username' in session:
-        edit_username_form = EditUserForm()
-
-        return render_template('profile.html', form=edit_username_form,
-                               user=user, username=html.escape(session.get('username')),
-                               rank=user_rank)
-
-    elif user and 'username' not in session:
-        edit_username_form = EditUserForm()
-
-        return render_template('profile.html', form=edit_username_form,
-                               user=user, username="", rank=user_rank)
-
-    else:
+    if not user:
         return jsonify({"failed": "User can not be found"}), 401
+
+    user_board = list(users.find().sort("wins", -1))
+    user_rank = user_board.index(user) + 1
+
+    edit_username_form = EditUserForm()
+    return render_template('profile.html', form=edit_username_form, user=user, username=session.get('username', ''),
+                           rank=user_rank)
 
 
 @app.route('/profile/<string:username>', methods=['POST'])
@@ -301,21 +176,18 @@ def edit_username(username: str) -> Union[Tuple[jsonify, int], redirect]:
     """
     # Check if the user is logged in with the given username
     if session.get("username") != username:
-        return jsonify({"failed": "In order to change this account's username, please login."}), 401
+        return jsonify({"failed": "Please login to change this account's username."}), 401
 
     # Get the new username from the request form data
     new_username = request.form.get('newUsername')
 
     # Check if the new username is valid and available
-    if not _is_valid_username(new_username):
-        return redirect(f'/profile/{session.get("username")}')
-
-    if not _is_available_username(new_username):
-        flash("Username already in use")
+    if not is_valid_username(new_username) or not is_available_username(new_username):
+        flash("Invalid username")
         return redirect(f'/profile/{session.get("username")}')
 
     # Update the user's username in the database and in the session
-    users.find_one_and_update({"username": session.get("username")}, {"$set": {'username': new_username}})
+    users.update_one({"username": username}, {"$set": {'username': new_username}})
     session["username"] = new_username
 
     # Redirect to the new user profile page
@@ -349,7 +221,7 @@ def create_room(data: Dict[str, str]) -> None:
     Returns:
         None.
     """
-    room_code = _generate_room_code(4)
+    room_code = generate_room_code(4)
     join_room(room_code)
     players[room_code] = data["username"]
 
@@ -418,7 +290,7 @@ def player1_choice(data: Dict[str, str]) -> None:
     Returns:
         None
     """
-    _handle_player_choice(data, "player1")
+    handle_player_choice(data, "player1", socketio)
 
 
 @socketio.on('player2_choice')
@@ -433,7 +305,7 @@ def player2_choice(data: Dict[str, str]) -> None:
     Returns:
         None
     """
-    _handle_player_choice(data, "player2")
+    handle_player_choice(data, "player2", socketio)
 
 
 if __name__ == "__main__":

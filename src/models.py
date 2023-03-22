@@ -1,7 +1,7 @@
 from flask import request, session, redirect, url_for, flash
 from typing import Dict, Union, Optional
 from werkzeug import Response
-from database import users
+from src.database import users
 import bcrypt
 import uuid
 
@@ -11,7 +11,7 @@ class User:
     def __init__(self):
         self.session = session
 
-    def start_session(self, user: Dict[str, str]) -> redirect:
+    def _start_session(self, user: Dict[str, str]) -> redirect:
         """
         Start a new session for the given user.
 
@@ -28,7 +28,7 @@ class User:
         return redirect(f'/profile/{user["username"]}')
 
     @staticmethod
-    def search_db_available(db_search_type: str, user_search_type: str) -> bool:
+    def _search_db_available(db_search_type: str, user_search_type: str) -> bool:
         """
             Check if a given user search type value is available in the database for the given search type.
 
@@ -44,7 +44,7 @@ class User:
         return users.find_one({db_search_type: user_search_type}) is None
 
     @staticmethod
-    def is_available(type_check_available: bool, type_of_check: str) -> Union[None, redirect]:
+    def _is_available(type_check_available: bool, type_of_check: str) -> Union[None, redirect]:
         """
         Check if the given type is available. If it's not, a flash message is added, and the user is redirected to the
         signup page.
@@ -59,6 +59,69 @@ class User:
         if not type_check_available:
             flash(f"{type_of_check} already in use")
             return redirect(url_for('signup_page'))
+
+    @staticmethod
+    def _check_valid_username(username: str) -> Union[None, redirect]:
+        """
+        Check if a username is valid, and if not, flash an error message and redirect to the signup page.
+
+        Args:
+            username: A string containing the username to be checked.
+
+        Returns:
+            None if the username is valid, or a redirect to the signup page if the username is invalid.
+        """
+        if '/' in username:
+            flash("Usernames cannot contain '/'!")
+            return redirect(url_for('signup_page'))
+        return None
+
+    @staticmethod
+    def _create_user(username: str, email: str, password: str) -> dict:
+        """
+        Create a new user object.
+
+        Args:
+            username: The username of the user.
+            email: The email of the user.
+            password: The password of the user.
+
+        Returns:
+            A dictionary containing the user's information.
+        """
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password.encode(), salt)
+
+        user = {
+            "_id": uuid.uuid4().hex,
+            "username": username,
+            "email": email,
+            "salt": salt,
+            "password": hashed_password,
+            "wins": 0,
+            "played": 0
+        }
+
+        return user
+
+    def _check_email_and_username_availability(self, user) -> None:
+        """
+        Check if the email and username are available in the given database. Raises a ValueError if not.
+
+        Args:
+            user: A dictionary containing information about the user.
+
+        Returns:
+            None
+        """
+        # Check if any users exist in the database
+        if users.count_documents({}) > 0:
+            # Check if Name and/or Email exists
+            is_available_email = self._search_db_available("email", user['email'])
+            self._is_available(is_available_email, "Email")
+
+            is_available_name = self._search_db_available("username", user['username'])
+            self._is_available(is_available_name, "Name")
 
     @staticmethod
     def check_password() -> redirect:
@@ -81,33 +144,14 @@ class User:
             or a redirect to the login page if the sign-up is successful.
         """
 
-        salt = bcrypt.gensalt()
-
-        # Usernames that contain '/' causes a bug, need to add a check for that
-        # Check if the username is valid
         username = request.form.get('username')
-        if '/' in username:
-            flash("Usernames cannot contain '/' !")
-            return redirect(url_for('signup_page'))
+        self._check_valid_username(username)
 
-        # Create the user object
-        user = {
-            "_id": uuid.uuid4().hex,
-            "username": request.form.get('username'),
-            "email": request.form.get('email'),
-            "salt": salt,
-            "password": bcrypt.hashpw(request.form.get('password').encode(), salt),
-            "wins": 0,
-            "played": 0
-        }
+        user = self._create_user(username=request.form.get('username'),
+                                 email=request.form.get('email'),
+                                 password=request.form.get('password'))
 
-        if len(list(users.find({}))) > 0:
-            # Check if Name and/or Email exists
-            is_available_email = self.search_db_available("email", user['email'])
-            self.is_available(is_available_email, "Email")
-
-            is_available_name = self.search_db_available("username", user['username'])
-            self.is_available(is_available_name, "Name")
+        self._check_email_and_username_availability(user=user)
 
         self.check_password()
 
@@ -141,7 +185,7 @@ class User:
             if user_found and bcrypt.hashpw(request.form.get('password').encode(),
                                             user_found['salt']) == user_found['password']:
 
-                return self.start_session(user_found)
+                return self._start_session(user_found)
 
         flash("Can't login due to wrong password or invalid email.")
 
