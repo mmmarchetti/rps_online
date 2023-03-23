@@ -223,9 +223,17 @@ def create_room(data: Dict[str, str]) -> None:
     """
     room_code = generate_room_code(4)
     join_room(room_code)
-    players[room_code] = data["username"]
 
-    socketio.emit('new_game', {'room_id': room_code}, room=room_code)
+    user1 = data["username"]
+
+    players[room_code] = user1
+
+    if data["maria"]:
+
+        socketio.emit('new_maria_game', {'room_id': room_code}, room=room_code)
+
+    else:
+        socketio.emit('new_game', {'room_id': room_code}, room=room_code)
 
 
 @socketio.on('join_game')
@@ -250,7 +258,7 @@ def join_game(data: Dict[str, str]) -> None:
 
 
 @socketio.on('leave_room')
-def leave_game(data):
+def leave_room(data):
     """
         Emit a "leave" event and remove the current client from the specified room.
 
@@ -278,10 +286,10 @@ def show_game_user_1() -> None:
     socketio.emit('show_game_user_1')
 
 
-@socketio.on('player1_choice')
-def player1_choice(data: Dict[str, str]) -> None:
+@socketio.on('register_player_choice')
+def register_player_choice(data: Dict[str, str]) -> None:
     """
-    Handle player 1's choice of rock, paper, or scissors.
+    Handle player choice of rock, paper, or scissors.
 
     Args:
         data: A dictionary containing information about the game state.
@@ -290,22 +298,7 @@ def player1_choice(data: Dict[str, str]) -> None:
     Returns:
         None
     """
-    handle_player_choice(data, "player1", socketio)
-
-
-@socketio.on('player2_choice')
-def player2_choice(data: Dict[str, str]) -> None:
-    """
-    Handle player 2's choice of rock, paper, or scissors.
-
-    Args:
-        data: A dictionary containing information about the game state.
-              Requires the keys "player1", "player2", "choice", and "room_id" to be present.
-
-    Returns:
-        None
-    """
-    handle_player_choice(data, "player2", socketio)
+    handle_player_choice(data, socketio)
 
 
 if __name__ == "__main__":

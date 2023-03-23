@@ -1,5 +1,5 @@
 # Rock-Paper-Scissors Web App
-This project is part of an article that proposes to study the results of the interaction of two players from the perspective of Game Theory and Chaotic Discrete Systems.
+This project is part of an article that proposes to study the results of the interaction of two players from the perspective of Game Theory and Chaotic Dynamic Systems.
 This is a web application that allows two players to play rock-paper-scissors against each other in real time using Flask and Flask-SocketIO. Users can sign up for an account, log in, view the leaderboard, and change their username.
 
 ## Installation

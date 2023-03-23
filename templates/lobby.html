@@ -5,18 +5,38 @@
       <h1>Lobby</h1>
     </div>
     <div class="row">
+
         <div class="col-md-6">
           <h2>Create a game</h2>
           <div>
             <button type="submit" id="create_room_btn" class="btn btn-primary">Create Game</button>
-          </div>          
+          </div>
+
         </div>
+
         <div class="col-md-6">
-          <h2>Join a game</h2>
+          <h2>Play vs MarIA</h2>
+          <div>
+            <button type="submit" id="play_maria_btn" class="btn btn-primary">Play vs MarIA</button>
+          </div>
+
+        </div>
+
+        <div class="col-md-6">
+          <h2>Join a friend game</h2>
           <input type="text" name="roomid" id="room_id" placeholder="TYPE ROOM ID">
           <button type="submit" id="join_room_btn" class="btn btn-primary">Join Game</button>
 
         </div>
+
+        <div class="col-md-6">
+          <h2>Play vs online random player</h2>
+          <div>
+            <button type="submit" id="play_random_plyer_btn" class="btn btn-primary">Play vs Random Player</button>
+          </div>
+
+        </div>
+
       </div>
       <div class="Leave">
         <h2>END GAME</h2>
@@ -51,6 +71,7 @@
       <div id="message">
         Waiting for other player's choice...
       </div>
+
       <!-- Create a variable named username where we take the username from the backend. -->
       <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
 
