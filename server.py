@@ -222,17 +222,15 @@ def create_room(data: Dict[str, str]) -> None:
         None.
     """
     room_code = generate_room_code(4)
-    join_room(room_code)
 
     user1 = data["username"]
-
     players[room_code] = user1
 
     if data["maria"]:
-
-        socketio.emit('new_maria_game', {'room_id': room_code}, room=room_code)
+        socketio.emit('new_maria_game', {'user2': 'MarIA', 'user1': user1})
 
     else:
+        join_room(room_code)
         socketio.emit('new_game', {'room_id': room_code}, room=room_code)
 
 
@@ -271,8 +269,6 @@ def leave_room(data):
         """
 
     socketio.emit('leave', {'username': data['username']}, room=data['room_id'])
-
-    leave_room(data['room_id'])
 
 
 @socketio.on('show_game_user_1')

@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let roomid;
     let player1 = false;
     let maria = false;
+
     // Connect to websocket
     var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port, {transports: ['websocket']});
 
@@ -19,27 +20,29 @@ document.addEventListener('DOMContentLoaded', () => {
         showEndGame();
     })
 
-    socket.on("new_maria_game", data => {
-        document.getElementsByClassName("row")[0].style.visibility = "hidden";
-        document.getElementsByClassName("header")[0].style.visibility = "hidden";
-        roomid = data['room_id']
-        showGame()
-        showEndGame()
-
-    })
-
     socket.on('user2_joined', data => {
         showpage(data);
     })
-    
+
     socket.on('wait', data =>{
         document.getElementById("message").innerHTML = data['person_waiting'] + " is waiting...";
     })
 
+    socket.on("new_maria_game", data => {
+        document.getElementsByClassName("row")[0].style.visibility = "hidden";
+        document.getElementsByClassName("header")[0].style.visibility = "hidden";
+        document.getElementsByClassName("name1")[0].innerHTML = data['user1'];
+        document.getElementsByClassName("name2")[0].innerHTML = data['user2'];
+        showGame()
+        showEndGame()
+    })
+
     socket.on('leave', data => {
+        maria = false;
         clearScores();
         document.getElementsByClassName("row")[0].style.visibility = "visible";
         document.getElementsByClassName("header")[0].style.visibility = "visible";
+        document.getElementsByClassName("name2")[0].innerHTML = "";
         hideGame();
         hideEndGame();
     })
@@ -73,9 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Request to create a room
     document.querySelector("#create_room_btn").onclick = () => {
         player1 = true;
+        maria = false;
         socket.emit('create_room', {"username": username, "maria": maria});
-        // Show the message div
-        // document.getElementById("message").style.visibility = "visible";
     }
 
     // Play against MarIA
@@ -106,9 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             player_number = "player2";
         }
-        // if (maria === true){
-        //     socket.emit(choice_number, {'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'rock', 'room_id':roomid});
-        // }else {
+        if (maria === true){
+            socket.emit('register_player_choice', {'player_number': player_number, 'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'rock', 'room_id':roomid});
+        }else {
         socket.emit('register_player_choice', {
             'player_number': player_number,
             'player1': document.getElementsByClassName('name1')[0].innerHTML,
@@ -116,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'choice': 'rock',
             'room_id': roomid
         });
-        // }
+        }
     }
 
     document.querySelector('#paper').onclick = () => {
@@ -127,9 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             player_number = "player2";
         }
-        // if (maria === true){
-        //     socket.emit(choice_number, {'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'rock', 'room_id':roomid});
-        // }else {
+        if (maria === true){
+            socket.emit('register_player_choice', {'player_number': player_number, 'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'paper', 'room_id':roomid});
+        }else {
         socket.emit('register_player_choice', {
             'player_number': player_number,
             'player1': document.getElementsByClassName('name1')[0].innerHTML,
@@ -137,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'choice': 'paper',
             'room_id': roomid
         });
-        // }
+        }
     }
 
     document.querySelector('#scissor').onclick = () => {
@@ -147,9 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             player_number = "player2";
         }
-        // if (maria === true){
-        //     socket.emit(choice_number, {'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'rock', 'room_id':roomid});
-        // }else {
+        if (maria === true){
+            socket.emit('register_player_choice', {'player_number': player_number, 'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'scissor', 'room_id':roomid});
+        }else {
         socket.emit('register_player_choice', {
             'player_number': player_number,
             'player1': document.getElementsByClassName('name1')[0].innerHTML,
@@ -157,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'choice': 'scissor',
             'room_id': roomid
         });
-        // }
+        }
     }
 
     // Request to join a room
