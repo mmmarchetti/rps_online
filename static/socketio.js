@@ -1,122 +1,121 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Hide the game page and the controls the momment the user enters the lobby
-    hideGame();
-    hideEndGame();
+    // Connect to websocket
+    var socket = io.connect(
+        location.protocol + '//' + document.domain + ':' + location.port, {transports: ['websocket']}
+    );
 
-    let roomid;
+    let player_room_id = false;
     let player1 = false;
+    let player2 = false;
     let maria = false;
 
-    // Connect to websocket
-    var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port, {transports: ['websocket']});
 
-    socket.on("new_game", data => {
-        document.getElementsByClassName("row")[0].style.visibility = "hidden";
-        document.getElementsByClassName("header")[0].style.visibility = "hidden";
-        document.getElementById("message").innerHTML ="Waiting for player 2, room ID is "+ data['room_id'];
-        roomid = data['room_id']
-        showGame();
-        showEndGame();
-    })
+    socket.emit('start_game');
 
-    socket.on('user2_joined', data => {
-        showpage(data);
-    })
+    socket.on('alert', data => {
+        alert(data['message']);
+    });
+
+    socket.on('send_info_player_event', data => {
+        player_room_id = data['player_room_id'];
+        player1 = data['player1'];
+        player2 = data['player2'];
+    });
+
+    socket.on('show_game_event', data => {
+
+        window.alert("Game Started!");
+
+        document.getElementsByClassName("game")[0].style.visibility = 'visible';
+        const message = document.querySelector('#message');
+        message.innerHTML = "Game Started! " + player1 + " VS " + player2;
+        const name2 = document.querySelector('.name2');
+        name2.innerHTML = player2;
+
+    });
 
     socket.on('wait', data =>{
-        document.getElementById("message").innerHTML = data['person_waiting'] + " is waiting...";
-    })
-
-    socket.on("new_maria_game", data => {
-        document.getElementsByClassName("row")[0].style.visibility = "hidden";
-        document.getElementsByClassName("header")[0].style.visibility = "hidden";
-        document.getElementsByClassName("name1")[0].innerHTML = data['user1'];
-        document.getElementsByClassName("name2")[0].innerHTML = data['user2'];
-        showGame()
-        showEndGame()
-    })
-
-    socket.on('leave', data => {
-        maria = false;
-        clearScores();
-        document.getElementsByClassName("row")[0].style.visibility = "visible";
-        document.getElementsByClassName("header")[0].style.visibility = "visible";
-        document.getElementsByClassName("name2")[0].innerHTML = "";
-        hideGame();
-        hideEndGame();
-    })
+        document.getElementById("bottom_message").innerHTML = data['person_waiting'] + " is waiting...";
+    });
     
     socket.on('result', data => {
         if (data['result'] === 'TIE'){
-            document.getElementById("message").innerHTML = "It's a tie!";
+            document.getElementById("bottom_message").innerHTML = "It's a tie!";
         }else{
             if (data['result'] === 'player1'){
-                winner = document.getElementsByClassName("name1")[0].innerHTML
-                document.getElementById("message").innerHTML = winner + " won!";
+                const winner = document.getElementsByClassName("name1")[0].innerHTML
+                document.getElementById("bottom_message").innerHTML = winner + " won!";
                 document.getElementById("player1_score").innerHTML = parseInt(document.getElementById("player1_score").innerHTML) + 1
             }else{
-                winner = document.getElementsByClassName("name2")[0].innerHTML
-                document.getElementById("message").innerHTML = winner + " won!";
+                const winner = document.getElementsByClassName("name2")[0].innerHTML
+                document.getElementById("bottom_message").innerHTML = winner + " won!";
                 document.getElementById("player2_score").innerHTML = parseInt(document.getElementById("player2_score").innerHTML) + 1
 
             }
         }
     })
 
-    // Show the game only on user 1's page
-    socket.on('show_game_user_1', data => {
-        showGame();
-        showEndGame();
-    })
-    ///////////////////////////////////////////////
-            // SENDING a websocket message //
-    ///////////////////////////////////////////////
-
-    // Request to create a room
-    document.querySelector("#create_room_btn").onclick = () => {
-        player1 = true;
-        maria = false;
-        socket.emit('create_room', {"username": username, "maria": maria});
-    }
-
-    // Play against MarIA
-    document.querySelector("#play_maria_btn").onclick = () => {
-        player1 = true;
-        maria = true;
-        socket.emit('create_room', {"username": username, "maria": maria});
-    }
-
-    document.querySelector("#join_room_btn").onclick = () => {
-        roomid = document.querySelector('#room_id').value;     
-        socket.emit('join_game', {"username": username, 'room_id': roomid});
-        // Show the game page on user 2's page
-        showGame();
-        showEndGame();
-        socket.emit('show_game_user_1')
-    }
-
     document.querySelector('#leave_room_btn').onclick = () => {
-        socket.emit('leave_room', {'username':username, 'room_id': roomid})
+            let player;
+            const confirmed = window.confirm('Are you sure you want to leave the room?');
+
+            if (confirmed) {
+                if (username === player1) {
+                    player = 'player1';
+                }else{
+                    player = 'player2';
+                }
+                // emit a "leave_room" event to the server
+                socket.emit('leave_game_page', {'player': player, 'player_room_id': player_room_id});
+            }
     }
+
+
+    socket.on('clear_game_event', data => {
+
+        document.getElementById("player1_score").innerHTML = '0';
+        document.getElementById("player2_score").innerHTML = '0';
+        document.getElementById("message").innerHTML = "The game room as closed.";
+        document.getElementById("game_room_id").innerHTML = "";
+        document.getElementById("bottom_message").innerHTML = "";
+        document.getElementsByClassName("game")[0].style.visibility = 'hidden';
+        document.getElementsByClassName("go_to_lobby")[0].style.visibility = 'visible';
+
+        player_room_id = false;
+        player1 = false;
+        player2 = false;
+        maria = false;
+
+        window.alert(`The ${data['player']} left the room.`);
+
+        // window.location.href = '/lobby';
+    });
+
 
     document.querySelector('#rock').onclick = () => {
         let player_number;
 
-        if (player1 === true) {
+        if (player1 === username) {
             player_number = "player1";
         } else {
             player_number = "player2";
         }
         if (maria === true){
-            socket.emit('register_player_choice', {'player_number': player_number, 'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'rock', 'room_id':roomid});
+            socket.emit('register_player_choice', {
+                'player_number': player_number,
+                'player1':player1,
+                'player2':'MarIA',
+                'choice':'rock',
+                'player_room_id':player_room_id});
+
         }else {
         socket.emit('register_player_choice', {
             'player_number': player_number,
-            'player1': document.getElementsByClassName('name1')[0].innerHTML,
-            'player2': document.getElementsByClassName('name2')[0].innerHTML,
+            'player1': player1,
+            'player2': player2,
             'choice': 'rock',
-            'room_id': roomid
+            'player_room_id': player_room_id
         });
         }
     }
@@ -124,77 +123,54 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#paper').onclick = () => {
         let player_number;
 
-        if (player1 === true) {
+        if (player1 === username) {
             player_number = "player1";
         } else {
             player_number = "player2";
         }
         if (maria === true){
-            socket.emit('register_player_choice', {'player_number': player_number, 'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'paper', 'room_id':roomid});
+            socket.emit('register_player_choice', {
+                'player_number': player_number,
+                'player1':player1,
+                'player2':'MarIA',
+                'choice':'paper',
+                'player_room_id':player_room_id});
+
         }else {
         socket.emit('register_player_choice', {
             'player_number': player_number,
-            'player1': document.getElementsByClassName('name1')[0].innerHTML,
-            'player2': document.getElementsByClassName('name2')[0].innerHTML,
+            'player1': player1,
+            'player2': player2,
             'choice': 'paper',
-            'room_id': roomid
+            'player_room_id': player_room_id
         });
         }
     }
 
     document.querySelector('#scissor').onclick = () => {
         let player_number;
-        if (player1 === true) {
+
+        if (player1 === username) {
             player_number = "player1";
         } else {
             player_number = "player2";
         }
         if (maria === true){
-            socket.emit('register_player_choice', {'player_number': player_number, 'player1':document.getElementsByClassName("name1")[0].innerHTML,'player2':'MarIA','choice':'scissor', 'room_id':roomid});
+            socket.emit('register_player_choice', {
+                'player_number': player_number,
+                'player1':player1,
+                'player2':'MarIA',
+                'choice':'scissor',
+                'player_room_id':player_room_id});
+
         }else {
         socket.emit('register_player_choice', {
             'player_number': player_number,
-            'player1': document.getElementsByClassName('name1')[0].innerHTML,
-            'player2': document.getElementsByClassName('name2')[0].innerHTML,
+            'player1': player1,
+            'player2': player2,
             'choice': 'scissor',
-            'room_id': roomid
+            'player_room_id': player_room_id
         });
         }
     }
-
-    // Request to join a room
-    function showpage(data){
-        document.getElementsByClassName("row")[0].style.visibility = "hidden";
-        document.getElementsByClassName("header")[0].style.visibility = "hidden";
-        document.getElementsByClassName("name1")[0].innerHTML = data['user1'];
-        document.getElementsByClassName("name2")[0].innerHTML = data['user2'];
-        document.getElementById("message").innerHTML = data['user2'] +" and " + data['user1'] + " is here!";
-    }
-
-    // When the user enters the lobby
-    function hideGame(){
-        document.getElementsByClassName("leaderboard")[0].style.visibility = "hidden";
-        document.getElementsByClassName("controls")[0].style.visibility = "hidden";
-        document.getElementById("message").style.visibility = "hidden";
-    }
-
-    function showGame(){
-        document.getElementsByClassName("leaderboard")[0].style.visibility = "visible";
-        document.getElementsByClassName("controls")[0].style.visibility = "visible";
-        document.getElementById("message").style.visibility = "visible";
-    }
-
-    function hideEndGame(){
-        document.getElementsByClassName("Leave")[0].style.visibility = "hidden"
-    }
-
-    function showEndGame(){
-        document.getElementsByClassName("Leave")[0].style.visibility = "visible"
-    }
-
-    function clearScores(){
-        document.getElementById("player2_score").innerHTML = "0"
-        document.getElementById("player1_score").innerHTML = "0"
-    }
-
 });

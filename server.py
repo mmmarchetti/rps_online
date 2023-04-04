@@ -1,15 +1,17 @@
-from flask import Flask, render_template, url_for, session, redirect, jsonify, request, flash, Response
-from src.player import is_valid_username, is_available_username, handle_player_choice
+from flask import Flask, render_template, url_for, session, redirect, jsonify, request, flash
+from werkzeug import Response
+
 from src.forms import RegistrationForm, LoginForm, JoinRoom, EditUserForm
-from flask_socketio import SocketIO, join_room, leave_room
-from typing import Union, Tuple, Dict
-from dotenv import load_dotenv
 from src.database import users
-from src.models import User
-import random
-import string
+from flask_socketio import SocketIO, join_room, leave_room, send
+from typing import Union, Tuple, Dict, Optional
+from dotenv import load_dotenv
+import uuid
 import html
 import os
+from random import choices
+from string import ascii_uppercase
+import bcrypt
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,8 +27,144 @@ socketio = SocketIO(app, cors_allowed_origins='*')
 # Socket global variables
 players = {}
 
+choice = {'choice1': '',
+          'choice2': ''}
 
-def generate_room_code(string_length: int) -> str:
+
+# Player functions
+
+
+def is_valid_username(username: str) -> bool:
+    """
+    Check if a given username is valid.
+
+    Args:
+        username (str): The username to check.
+
+    Returns:
+        bool: True if the username is valid, False otherwise.
+    """
+    return '/' not in username
+
+
+def is_available_username(username: str) -> bool:
+    """
+    Check if a given username is available.
+
+    Args:
+        username (str): The username to check.
+
+    Returns:
+        bool: True if the username is available, False otherwise.
+    """
+    return users.find_one({"username": username}) is None
+
+
+def _search_db_available(db_search_type: str, user_search_type: str) -> bool:
+    """
+        Check if a given user search type value is available in the database for the given search type.
+
+        Args:
+            db_search_type (str): The search type to use for the database query.
+            user_search_type (str): The value to search for in the database for the given search type.
+
+        Returns:
+            bool: True if the user search type value is not found in the database for the given search type,
+            False otherwise.
+        """
+
+    return users.find_one({db_search_type: user_search_type}) is None
+
+
+def create_player(username: str, email: str, password: str) -> dict:
+    """
+    Create a new user object.
+
+    Args:
+        username: The username of the user.
+        email: The email of the user.
+        password: The password of the user.
+
+    Returns:
+        A dictionary containing the user's information.
+    """
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode(), salt)
+
+    user = {
+        "_id": uuid.uuid4().hex,
+        "username": username,
+        "email": email,
+        "salt": salt,
+        "password": hashed_password,
+        "wins": 0,
+        "played": 0,
+        "games": {"datetime": [], "rps": [], "result": []}  # TODO: add more data to be collected
+    }
+
+    return user
+
+
+def _is_available(type_check_available: bool, type_of_check: str) -> bool:
+    """
+    Check if the given type is available. If it's not, a flash message is added, and the user is redirected to the
+    signup page.
+
+    Args:
+        type_check_available (bool): A boolean that indicates whether the given type is available or not.
+        type_of_check (str): A string indicating the type being checked.
+
+    Returns:
+        Union[None, redirect]: None if the type is available, else a redirect to the signup page.
+    """
+    if not type_check_available:
+        flash(f"{type_of_check} already in use")
+        return False
+
+    return True
+
+
+def check_email_and_username_availability(user) -> Tuple[bool, bool]:
+    """
+    Check if the email and username are available in the given database. Raises a ValueError if not.
+
+    Args:
+        user: A dictionary containing information about the user.
+
+    Returns:
+        None
+    """
+    # Check if any users exist in the database
+    if users.count_documents({}) > 0:
+        # Check if Name and/or Email exists
+        available_email = _search_db_available("email", user['email'])
+        available_name = _search_db_available("username", user['username'])
+
+        return _is_available(available_email, "Email"), _is_available(available_name, "Name")
+
+
+# Game Session Functions
+
+
+def _start_session(user: Dict[str, str]) -> redirect:
+    """
+    Start a new session for the given user.
+
+    Args:
+        user (dict): A dictionary containing user information, including the user's ID and username.
+
+    Returns:
+        flask.redirect: A redirect to the user's profile page.
+    """
+    session['logged_in'] = True
+    session['userid'] = user["_id"]
+    session["username"] = user["username"]
+    session['player_room_id'] = None
+
+    return redirect('/lobby/')
+
+
+def _generate_room_code(string_length: int) -> str:
     """
     Generate a random string of uppercase letters with the given length.
 
@@ -36,7 +174,214 @@ def generate_room_code(string_length: int) -> str:
     Returns:
         str: A random string of uppercase letters.
     """
-    return ''.join(random.choices(string.ascii_uppercase, k=string_length))
+    return ''.join(choices(ascii_uppercase, k=string_length))
+
+
+def _check_valid_username(username: str) -> Union[None, redirect]:
+    """
+    Check if a username is valid, and if not, flash an error message and redirect to the signup page.
+
+    Args:
+        username: A string containing the username to be checked.
+
+    Returns:
+        None if the username is valid, or a redirect to the signup page if the username is invalid.
+    """
+    if '/' in username:
+        flash("Usernames cannot contain '/'!")
+        return redirect(url_for('signup_page'))
+    return None
+
+
+def _check_password() -> redirect:
+    """
+    Check if password and confirm_password fields match.
+
+    Returns:
+        flask.redirect: A redirect to the signup page if passwords do not match.
+    """
+    if request.form.get('password') != request.form.get('confirm_password'):
+        flash("Passwords do not match")
+        return redirect(url_for('signup_page'))
+
+
+def signup() -> Union[redirect, None]:
+    """
+    Sign up a new user by adding their information to the database.
+
+    Returns:
+        Union[flash, redirect]: A flash message if the sign-up is unsuccessful,
+        or a redirect to the login page if the sign-up is successful.
+    """
+
+    username = request.form.get('username')
+    _check_valid_username(username)
+
+    user = create_player(username=request.form.get('username'),
+                         email=request.form.get('email'),
+                         password=request.form.get('password'))
+
+    available_email, available_name = check_email_and_username_availability(user=user)
+
+    if not available_name or not available_email:
+        return redirect(url_for('signup_page'))
+
+    _check_password()
+
+    users.insert_one(user)
+
+    return redirect(url_for('login_page'))
+
+
+def signout() -> redirect:
+    """
+    Clears the user's session and redirects to the homepage.
+
+    Returns:
+        flask.redirect: A redirect to the homepage.
+    """
+    session.clear()
+    flash("Successfully signed out!")
+    return redirect('/')
+
+
+def login() -> Optional[redirect]:
+    """
+    Log in the user with the email and password from the request form.
+
+    Returns:
+        Optional[flask.redirect]: A redirect to the user's profile page if login successful,
+        otherwise a redirect to the home page.
+    """
+
+    if len(list(users.find({}))) > 0:
+        user_found: dict = users.find_one({"email": request.form.get('email')})
+
+        if user_found and bcrypt.hashpw(request.form.get('password').encode(),
+                                        user_found['salt']) == user_found['password']:
+
+            return _start_session(user_found)
+
+    flash("Can't login due to wrong password or invalid email.")
+
+    return redirect('/')
+
+
+def _get_winner(choice1: str, choice2: str) -> str:
+    """
+    Determine the winner of the game based on the choices made by player 1 and player 2.
+
+    Args:
+        choice1: A string representing the choice made by player 1.
+        choice2: A string representing the choice made by player 2.
+
+    Returns:
+        A string indicating the result of the game. Can be "player1_win", "player2_win", or "TIE".
+    """
+    if choice1 == choice2:
+        return "TIE"
+
+    winning_combinations = {
+        'rock': 'scissor',
+        'scissor': 'paper',
+        'paper': 'rock'
+    }
+
+    if winning_combinations[choice1] == choice2:
+        return 'player1'
+
+    else:
+        return 'player2'
+
+
+def _update_winner(player_name: str) -> None:
+    """
+    Update the number of wins for the winner of the game in the database.
+
+    Args:
+        player_name: A string representing the username of win player.
+
+    Returns:
+        None
+    """
+
+    user_wins = users.find_one({"username": player_name})['wins']
+    users.find_one_and_update({"username": player_name}, {"$set": {'wins': user_wins + 1}})
+
+
+def handle_player_choice(data: Dict[str, str]) -> None:
+    """
+    Handle a player's choice of rock, paper, or scissors, and update the game state and send results to the clients.
+
+    Args:
+        data: A dictionary containing information about the game state.
+              Requires the keys "player1", "player2", and "room_id" to be present.
+
+    Returns:
+        None
+
+    """
+    player_choice = data["player_number"]
+
+    if player_choice == "player1":
+        choice['choice1'] = data['choice']
+
+        # if data['player2'] == "MarIA":
+        #     choice["choice2"] = generate_maria_choice()
+
+    else:
+        choice['choice2'] = data['choice']
+
+    choice1 = choice['choice1']
+    choice2 = choice['choice2']
+
+    # If both players have made a choice, determine the winner and update the game state
+    if choice1 and choice2:
+        winner = _get_winner(choice1, choice2)
+
+        if winner != "TIE":
+            _update_winner(data[winner])
+
+        socketio.emit('result', {'result': winner}, room=data['player_room_id'])
+
+        choice['choice1'] = ''
+        choice['choice2'] = ''
+
+    else:
+        # If the other player hasn't made a choice yet, wait for them to do so
+        socketio.emit('wait', {'person_waiting': player_choice}, room=data['player_room_id'])
+
+
+def _get_game_message(player1, player2, session_user):
+    """ Get the message to be displayed in the game page.
+
+    Args:
+        player1 (str): The username of the first player.
+        player2 (str): The username of the second player.
+        session_user (str): The username of the user in the current session.
+
+    Returns:
+        str: The message to be displayed in the game page.
+    """
+    # verify if the user is in the game
+    if session_user in [player1, player2]:
+        # verify if the game has started
+        if not player2:
+            message = f"Waiting for Player2 join... Send to your friend the Room ID code."
+        else:
+            message = f"Game Started! {player1} VS {player2}"
+
+    # if the user is not in the game
+    else:
+        if player2:
+            message = f"Sorry, this room is full. Please try another room."
+        else:
+            message = f"Please click 'Join Game' to join this room"
+
+    return message
+
+
+# ROUTES
 
 
 @app.route('/', methods=["POST", "GET"])
@@ -57,7 +402,7 @@ def login_page() -> Union[redirect, str]:
     login_form = LoginForm()
 
     if login_form.validate_on_submit():
-        return User().login()
+        return login()
 
     return render_template('login.html', form=login_form)
 
@@ -74,12 +419,12 @@ def signup_page() -> Union[redirect, str]:
     registration_form = RegistrationForm()
 
     if registration_form.validate_on_submit():
-        return User().signup()
+        return signup()
 
     return render_template('register.html', form=registration_form)
 
 
-@app.route("/lobby/", methods=["GET"])
+@app.route("/lobby/", methods=["GET", "POST"])
 def lobby_page() -> Union[str, redirect]:
     """
     Renders the lobby page with a JoinRoom form and the user's username if they are logged in,
@@ -119,7 +464,7 @@ def signout_page() -> None:
     Returns:
         None
     """
-    return User().signout()
+    return signout()
 
 
 @app.route("/profile/")
@@ -162,7 +507,7 @@ def profile_page(username: str) -> Union[str, Tuple[Response, int]]:
                            rank=user_rank)
 
 
-@app.route('/profile/<string:username>', methods=['POST'])
+@app.route('/edit-username/<string:username>', methods=['POST'])
 def edit_username(username: str) -> Union[Tuple[jsonify, int], redirect]:
     """
     Edit the username of the currently logged-in user.
@@ -207,79 +552,133 @@ def leaderboard_page():
     return render_template('leaderboard.html', boards=user_board, title="Leaderboard")
 
 
+@app.route('/create-game/', methods=['POST', 'GET'])
+def create_game_page() -> Union[str, redirect]:
+    """
+    Render the game page with the given room id.
+
+    Args:
+        room_code (str): The room id of the game to be rendered.
+
+    Returns:
+        Union[str, redirect]: The rendered game page with the room id, or a redirect to the lobby page.
+    """
+    player_room_id = _generate_room_code(4)
+    session['player_room_id'] = player_room_id  # todo limpar room id depois de sair do jogo
+
+    players[player_room_id] = {"player1": session.get('username', ''), "player2": None}
+
+    return redirect(url_for('enter_game_page', room=player_room_id))
+
+
+@app.route('/join-game/', methods=['POST', 'GET'])
+def join_game_page() -> Union[str, redirect]:
+    """
+    Render the game page with the given room id.
+
+    Args:
+        player_room_id (str): The room id of the game to be rendered.
+
+    Returns:
+        Union[str, redirect]: The rendered game page with the room id, or a redirect to the lobby page.
+    """
+    player_room_id = request.form.get('player_room_id')
+
+    if player_room_id in players:
+
+        if players[player_room_id]["player2"] is None:
+
+            players[player_room_id]["player2"] = session.get('username', '')
+            session['player_room_id'] = player_room_id
+
+            return redirect(url_for('enter_game_page', room=player_room_id))
+
+        else:
+            flash("Sorry, this room is full. Please try another room.")
+            return redirect(url_for('lobby_page'))
+    else:
+        flash("Sorry, this room does not exist. Please try another room.")
+        return redirect(url_for('lobby_page'))
+
+
+@app.route('/game', methods=['POST', 'GET'])
+def enter_game_page() -> Union[str, redirect]:
+    """
+    Render the game page with the given room id.
+
+    Args:
+        room (str): The room id of the game to be rendered.
+
+    Returns:
+        Union[str, redirect]: The rendered game page with the room id, or a redirect to the lobby page.
+    """
+    player_room_id = request.args.get('room')
+
+    if player_room_id in players:
+
+        session_user = session.get('username', '')
+        player1 = players[player_room_id]["player1"]
+        player2 = players[player_room_id]["player2"]
+
+        message = _get_game_message(player1, player2, session_user)
+
+        return render_template('gameplay.html',
+                               message=message,
+                               player1=player1,
+                               player2=player2,
+                               username=session_user,
+                               game_room_id=player_room_id)
+
+    return redirect(url_for("lobby_page"))
+
+
 # WEBSOCKET ROUTES
 
-@socketio.on('create_room')
-def create_room(data: Dict[str, str]) -> None:
+
+@socketio.on('start_game')
+def start_game() -> None:
     """
-    Create a new room and add the player to it.
-
-    Args:
-        data: A dictionary containing information about the player.
-            Requires the key "username" to be present.
-
-    Returns:
-        None.
-    """
-    room_code = generate_room_code(4)
-
-    user1 = data["username"]
-    players[room_code] = user1
-
-    if data["maria"]:
-        socketio.emit('new_maria_game', {'user2': 'MarIA', 'user1': user1})
-
-    else:
-        join_room(room_code)
-        socketio.emit('new_game', {'room_id': room_code}, room=room_code)
-
-
-@socketio.on('join_game')
-def join_game(data: Dict[str, str]) -> None:
-    """
-    Join a game and emit a 'user2_joined' event to the specified room.
-
-    Args:
-        data: A dictionary containing information about the player and the room to join.
-              Requires the keys "username" and "room_id" to be present.
+    Emit a "load_event" event to the client.
 
     Returns:
         None
     """
-    room_id = data['room_id']
-    join_room(room_id)
+    player_room_id = session.get('player_room_id', '')
 
-    user1 = players[room_id]
-    user2 = data['username']
+    if player_room_id in players:
+        player1 = players[player_room_id]["player1"]
+        player2 = players[player_room_id]["player2"]
+        join_room(player_room_id)
 
-    socketio.emit('user2_joined', {'user2': user2, 'user1': user1}, room=data['room_id'])
+        socketio.emit("send_info_player_event", {"player_room_id": player_room_id,
+                                                 "player1": player1,
+                                                 "player2": player2},
+                      room=player_room_id)
+
+        if player1 and player2:
+            socketio.emit('show_game_event', {}, room=player_room_id)
 
 
-@socketio.on('leave_room')
-def leave_room(data):
+@socketio.on('leave_game_page')
+def leave_game_page(data: Dict[str, str]) -> None:
     """
-        Emit a "leave" event and remove the current client from the specified room.
-
-        Args:
-            data: A dictionary containing information about the player and room.
-                  Requires the keys "username" and "room_id" to be present.
-
-        Returns:
-            None
-        """
-
-    socketio.emit('leave', {'username': data['username']}, room=data['room_id'])
-
-
-@socketio.on('show_game_user_1')
-def show_game_user_1() -> None:
-    """
-    Emit a "show_game_user_1" event to the client.
+    Remove the player from the room and emit a "player_left" event to the other player(s).
 
     Returns:
         None
     """
-    socketio.emit('show_game_user_1')
+    player_room_id = data['player_room_id']
+    player = data['player']
+
+    if session.get('player_room_id', '') == player_room_id:
+
+        session['player_room_id'] = None
+
+        socketio.emit('clear_game_event', {'player': player, 'player_room_id': player_room_id}, room=player_room_id)
+
+        leave_room(player_room_id)
+
+        players.pop(player_room_id)
 
 
 @socketio.on('register_player_choice')
@@ -294,7 +693,7 @@ def register_player_choice(data: Dict[str, str]) -> None:
     Returns:
         None
     """
-    handle_player_choice(data, socketio)
+    handle_player_choice(data)
 
 
 if __name__ == "__main__":

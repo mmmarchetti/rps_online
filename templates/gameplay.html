@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+<!--<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/login.css') }}">-->
+{% block content %}
+    <div class="go_to_lobby">
+        <form action="{{url_for('lobby_page')}}" method="POST">
+            <input type="submit" class="btn btn-secondary" value="Go to lobby">
+        </form>
+    </div>
+    <div id="message">
+        {{ message }}
+    </div>
+    <div id="game_room_id">
+        Room ID: {{ game_room_id }}
+    </div>
+
+      <div class="game">
+
+          <div class="leaderboard">
+            <div class="player1">
+                <h4 class="name1">
+                    {{ player1 }}
+                </h4>
+                <span id="player1_score">0</span>
+
+            </div>
+            <div class="player2">
+                <h4 class="name2">
+                    {{ player2 }}
+                </h4>
+                <span id="player2_score">0</span>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button type="submit" id="rock" class="btn btn-primary">
+                Rock
+            </button>
+            <button type="submit" id="paper" class="btn btn-info">
+                Paper
+            </button>
+            <button type="submit" id="scissor" class="btn btn-danger">
+                Scissor
+            </button>
+          </div>
+
+          <div id="bottom_message">
+                Select your move
+          </div>
+
+          <div class="leave">
+            <button type="submit" id="leave_room_btn" class="btn btn-primary">Leave Game</button>
+          </div>
+
+      </div>
+
+      <!-- Create a variable named username where we take the username from the backend. -->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+
+      <script type="text/javascript">
+        const username = `{{ username }}`;
+        const game_room_id = `{{ game_room_id }}`;
+        document.getElementsByClassName("game")[0].style.visibility = 'hidden';
+        document.getElementsByClassName("go_to_lobby")[0].style.visibility = 'hidden';
+      </script>
+      
+      <script src="{{ url_for('static', filename='socketio.js') }}"></script>
+{% endblock content %}

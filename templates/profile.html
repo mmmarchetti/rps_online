@@ -12,7 +12,7 @@
   <div>Current rank: {{ rank }}</div>
 
   {% if user.username == username %}
-    <form class="form-signin" action="{{url_for('profile_page', username=user.username)}}", method="POST">
+    <form class="form-signin" action="{{url_for('edit_username', username=user.username)}}", method="POST">
         <!-- <input type="text", name="newUsername", placeholder="New Username", required, class="form-field"> -->
         {{ form.newUsername.label(class="form-label") }}
         {{ form.newUsername(class="form-control") }}
