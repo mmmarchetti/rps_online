@@ -3,7 +3,7 @@ from werkzeug import Response
 
 from src.forms import RegistrationForm, LoginForm, JoinRoom, EditUserForm
 from src.database import users
-from flask_socketio import SocketIO, join_room, leave_room, send
+from flask_socketio import SocketIO, join_room, leave_room
 from typing import Union, Tuple, Dict, Optional
 from dotenv import load_dotenv
 import uuid
@@ -12,6 +12,7 @@ import os
 from random import choices
 from string import ascii_uppercase
 import bcrypt
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -27,8 +28,8 @@ socketio = SocketIO(app, cors_allowed_origins='*')
 # Socket global variables
 players = {}
 
-choice = {'choice1': '',
-          'choice2': ''}
+choice = {'player1': None,
+          'player2': None}
 
 
 # Player functions
@@ -267,7 +268,7 @@ def login() -> Optional[redirect]:
     return redirect('/')
 
 
-def _get_winner(choice1: str, choice2: str) -> str:
+def _get_winner(choice1: Union[str, None], choice2: Union[str, None]) -> str:
     """
     Determine the winner of the game based on the choices made by player 1 and player 2.
 
@@ -323,29 +324,20 @@ def handle_player_choice(data: Dict[str, str]) -> None:
     """
     player_choice = data["player_number"]
 
-    if player_choice == "player1":
-        choice['choice1'] = data['choice']
-
-        # if data['player2'] == "MarIA":
-        #     choice["choice2"] = generate_maria_choice()
-
-    else:
-        choice['choice2'] = data['choice']
-
-    choice1 = choice['choice1']
-    choice2 = choice['choice2']
+    choice[player_choice] = data['choice']
 
     # If both players have made a choice, determine the winner and update the game state
-    if choice1 and choice2:
-        winner = _get_winner(choice1, choice2)
+    if choice['player1'] and choice['player2']:
+
+        winner = _get_winner(choice['player1'], choice['player2'])
 
         if winner != "TIE":
             _update_winner(data[winner])
 
-        socketio.emit('result', {'result': winner}, room=data['player_room_id'])
+        socketio.emit('result', {'result': winner, 'coices': choice}, room=data['player_room_id'])
 
-        choice['choice1'] = ''
-        choice['choice2'] = ''
+        choice['player1'] = None
+        choice['player2'] = None
 
     else:
         # If the other player hasn't made a choice yet, wait for them to do so

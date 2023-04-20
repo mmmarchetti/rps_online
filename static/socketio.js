@@ -10,11 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let player2 = false;
     let maria = false;
 
-
     socket.emit('start_game');
 
     socket.on('alert', data => {
-        alert(data['message']);
+        window.alert(data['message']);
     });
 
     socket.on('send_info_player_event', data => {
@@ -30,31 +29,44 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementsByClassName("game")[0].style.visibility = 'visible';
         const message = document.querySelector('#message');
         message.innerHTML = "Game Started! " + player1 + " VS " + player2;
+
         const name2 = document.querySelector('.name2');
         name2.innerHTML = player2;
-
     });
 
     socket.on('wait', data =>{
         document.getElementById("bottom_message").innerHTML = data['person_waiting'] + " is waiting...";
     });
-    
+
+
+    function setChoiceImage(player, choice) {
+      const imagePath = `static/images/${choice}.png`;
+      const playerChoiceImage = document.getElementById(`${player}_choice`);
+      playerChoiceImage.src = imagePath;
+    }
+
+
     socket.on('result', data => {
+        let message = ""
+
         if (data['result'] === 'TIE'){
-            document.getElementById("bottom_message").innerHTML = "It's a tie!";
+            message = "It's a tie!"
+            document.getElementById("bottom_message").innerHTML = message;
         }else{
             if (data['result'] === 'player1'){
                 const winner = document.getElementsByClassName("name1")[0].innerHTML
-                document.getElementById("bottom_message").innerHTML = winner + " won!";
+                message = winner + " won!"
+                document.getElementById("bottom_message").innerHTML = message;
                 document.getElementById("player1_score").innerHTML = parseInt(document.getElementById("player1_score").innerHTML) + 1
             }else{
                 const winner = document.getElementsByClassName("name2")[0].innerHTML
-                document.getElementById("bottom_message").innerHTML = winner + " won!";
+                message = winner + " won!"
+                document.getElementById("bottom_message").innerHTML = message;
                 document.getElementById("player2_score").innerHTML = parseInt(document.getElementById("player2_score").innerHTML) + 1
 
             }
         }
-    })
+    });
 
     document.querySelector('#leave_room_btn').onclick = () => {
             let player;
@@ -66,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }else{
                     player = 'player2';
                 }
-                // emit a "leave_room" event to the server
                 socket.emit('leave_game_page', {'player': player, 'player_room_id': player_room_id});
             }
     }
@@ -88,9 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
         maria = false;
 
         window.alert(`The ${data['player']} left the room.`);
-
-        // window.location.href = '/lobby';
     });
+
 
 
     document.querySelector('#rock').onclick = () => {
@@ -98,9 +108,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (player1 === username) {
             player_number = "player1";
+            setChoiceImage(player_number, 'rock');
         } else {
             player_number = "player2";
+            setChoiceImage(player_number, 'rock');
         }
+
         if (maria === true){
             socket.emit('register_player_choice', {
                 'player_number': player_number,
@@ -125,9 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (player1 === username) {
             player_number = "player1";
+            setChoiceImage(player_number, 'paper');
         } else {
             player_number = "player2";
+            setChoiceImage(player_number, 'paper');
         }
+
         if (maria === true){
             socket.emit('register_player_choice', {
                 'player_number': player_number,
@@ -152,9 +168,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (player1 === username) {
             player_number = "player1";
+            setChoiceImage(player_number, 'scissor');
         } else {
             player_number = "player2";
+            setChoiceImage(player_number, 'scissor');
         }
+
         if (maria === true){
             socket.emit('register_player_choice', {
                 'player_number': player_number,

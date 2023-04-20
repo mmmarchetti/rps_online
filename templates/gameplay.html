@@ -16,18 +16,42 @@
       <div class="game">
 
           <div class="leaderboard">
+
             <div class="player1">
+
                 <h4 class="name1">
                     {{ player1 }}
                 </h4>
+
                 <span id="player1_score">0</span>
+
+                <div class="card">
+                  <div class="card-back">
+                    <img src="static/images/logo.png" alt="Card back">
+                  </div>
+                  <div class="card-front">
+                    <img id="player1_choice" src="" alt="Player 1 choice">
+                  </div>
+                </div>
 
             </div>
             <div class="player2">
+
                 <h4 class="name2">
                     {{ player2 }}
                 </h4>
+
                 <span id="player2_score">0</span>
+
+                <div class="card">
+                  <div class="card-back">
+                    <img src="static/images/logo.png" alt="Card back">
+                  </div>
+                  <div class="card-front">
+                    <img id="player2_choice" src="" alt="Player 2 choice">
+                  </div>
+                </div>
+
             </div>
           </div>
 
@@ -62,6 +86,6 @@
         document.getElementsByClassName("game")[0].style.visibility = 'hidden';
         document.getElementsByClassName("go_to_lobby")[0].style.visibility = 'hidden';
       </script>
-      
+
       <script src="{{ url_for('static', filename='socketio.js') }}"></script>
 {% endblock content %}
