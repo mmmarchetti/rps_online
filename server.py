@@ -319,9 +319,11 @@ def handle_player_choice(data: Dict[str, str]) -> None:
         None
 
     """
-    player_choice = data["player_number"]
+    player_number = data["player_number"]
 
-    choice[player_choice] = data['choice']
+    choice[player_number] = data['choice']
+
+    room_id = data['player_room_id']
 
     # If both players have made a choice, determine the winner and update the game state
     if choice['player1'] and choice['player2']:
@@ -331,14 +333,16 @@ def handle_player_choice(data: Dict[str, str]) -> None:
         if winner != "TIE":
             _update_winner(data[winner])
 
-        socketio.emit('result', {'result': winner, 'coices': choice}, room=data['player_room_id'])
+        socketio.emit('result', {'result': winner, 'coices': choice}, room=room_id)
+
+        notify_opponent_choice(players_choices=choice, room=room_id)
 
         choice['player1'] = None
         choice['player2'] = None
 
     else:
         # If the other player hasn't made a choice yet, wait for them to do so
-        socketio.emit('wait', {'person_waiting': player_choice}, room=data['player_room_id'])
+        socketio.emit('wait', {'person_waiting': player_number}, room=room_id)
 
 
 def _get_game_message(player1, player2, session_user):
@@ -368,6 +372,15 @@ def _get_game_message(player1, player2, session_user):
             message = f"Please click 'Join Game' to join this room"
 
     return message
+
+
+def notify_opponent_choice(players_choices, room):
+    """
+    Notify the opponent of the player's choice.
+    """
+    socketio.emit('update_opponent_choice',
+                  {'choices': players_choices},
+                  room=room)
 
 
 # ROUTES

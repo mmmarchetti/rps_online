@@ -38,6 +38,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById("bottom_message").innerHTML = data['person_waiting'] + " is waiting...";
     });
 
+    socket.on('update_opponent_choice', data => {
+        let opponent;
+        
+        if (username === player2) {
+            opponent = 'player1';
+        }else{
+            opponent = 'player2';
+        }
+
+        window.alert(opponent);
+        window.alert(data['choices'][opponent]);
+
+        const opponent_choice = data['choices'][opponent];
+        window.alert(opponent_choice);
+        
+        setChoiceImage(opponent, opponent_choice);
+    });
 
     function setChoiceImage(player, choice) {
       const imagePath = `static/images/${choice}.png`;
