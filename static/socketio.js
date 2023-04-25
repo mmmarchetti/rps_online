@@ -108,11 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (player1 === username) {
             player_number = "player1";
-            setChoiceImage(player_number, 'rock');
+
         } else {
             player_number = "player2";
-            setChoiceImage(player_number, 'rock');
+            
         }
+        
+        setChoiceImage(player_number, 'rock');
 
         if (maria === true){
             socket.emit('register_player_choice', {
@@ -138,11 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (player1 === username) {
             player_number = "player1";
-            setChoiceImage(player_number, 'paper');
+            
         } else {
             player_number = "player2";
-            setChoiceImage(player_number, 'paper');
+            
         }
+
+        setChoiceImage(player_number, 'paper');
 
         if (maria === true){
             socket.emit('register_player_choice', {
@@ -168,11 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (player1 === username) {
             player_number = "player1";
-            setChoiceImage(player_number, 'scissor');
+            
         } else {
             player_number = "player2";
-            setChoiceImage(player_number, 'scissor');
+            
         }
+
+        setChoiceImage(player_number, 'scissor');
 
         if (maria === true){
             socket.emit('register_player_choice', {

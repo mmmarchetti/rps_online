@@ -59,31 +59,7 @@
   width: 200px;
   height: 200px;
   perspective: 1000px;
-  position: relative; /* add this line */
-}
-
-.card-back,
-.card-front {
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  position: absolute;
-  top: 0;
-  left: 0;
-  transition: transform 1s;
-}
-
-.card-back img,
-.card-front img {
-  width: 100%;
-  height: 100%;
-}
-
-.card-front {
-  position: absolute;
-  top: 50%; /* add this line */
-  left: 50%; /* add this line */
-  transform: translate(-50%, -50%); /* add this line */
+  position: relative; 
 }
 
 /* End of additions for the gameplay page layout */

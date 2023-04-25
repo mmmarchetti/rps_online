@@ -135,13 +135,10 @@ def check_email_and_username_availability(user) -> Tuple[bool, bool]:
     Returns:
         None
     """
-    # Check if any users exist in the database
-    if users.count_documents({}) > 0:
-        # Check if Name and/or Email exists
-        available_email = _search_db_available("email", user['email'])
-        available_name = _search_db_available("username", user['username'])
+    available_email = _search_db_available("email", user['email'])
+    available_name = _search_db_available("username", user['username'])
 
-        return _is_available(available_email, "Email"), _is_available(available_name, "Name")
+    return _is_available(available_email, "Email"), _is_available(available_name, "Name")
 
 
 # Game Session Functions
