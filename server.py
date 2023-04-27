@@ -1,6 +1,5 @@
 from flask import Flask, render_template, url_for, session, redirect, jsonify, request, flash
 from werkzeug import Response
-
 from src.forms import RegistrationForm, LoginForm, JoinRoom, EditUserForm
 from src.database import users
 from flask_socketio import SocketIO, join_room, leave_room
@@ -63,16 +62,16 @@ def is_available_username(username: str) -> bool:
 
 def _search_db_available(db_search_type: str, user_search_type: str) -> bool:
     """
-        Check if a given user search type value is available in the database for the given search type.
+    Check if a given user search type value is available in the database for the given search type.
 
-        Args:
-            db_search_type (str): The search type to use for the database query.
-            user_search_type (str): The value to search for in the database for the given search type.
+    Args:
+        db_search_type (str): The search type to use for the database query.
+        user_search_type (str): The value to search for in the database for the given search type.
 
-        Returns:
-            bool: True if the user search type value is not found in the database for the given search type,
-            False otherwise.
-        """
+    Returns:
+        bool: True if the user search type value is not found in the database for the given search type,
+        False otherwise.
+    """
 
     return users.find_one({db_search_type: user_search_type}) is None
 
@@ -100,7 +99,7 @@ def create_player(username: str, email: str, password: str) -> dict:
         "password": hashed_password,
         "wins": 0,
         "played": 0,
-        "games": {"datetime": [], "rps": [], "result": []}  # TODO: add more data to be collected
+        "games": {"datetime": [], "rps": [], "result": []} 
     }
 
     return user
@@ -360,16 +359,16 @@ def _get_game_message(player1, player2, session_user):
     if session_user in [player1, player2]:
         # verify if the game has started
         if not player2:
-            message = f"Waiting for Player2 join... Send to your friend the Room ID code."
+            message = "Waiting for Player2 join... Send to your friend the Room ID code."
         else:
-            message = f"Game Started! {player1} VS {player2}"
+            message = "Game Started! {player1} VS {player2}"
 
     # if the user is not in the game
     else:
         if player2:
-            message = f"Sorry, this room is full. Please try another room."
+            message = "Sorry, this room is full. Please try another room."
         else:
-            message = f"Please click 'Join Game' to join this room"
+            message = "Please click 'Join Game' to join this room"
 
     return message
 
@@ -566,7 +565,7 @@ def create_game_page() -> Union[str, redirect]:
         Union[str, redirect]: The rendered game page with the room id, or a redirect to the lobby page.
     """
     player_room_id = _generate_room_code(4)
-    session['player_room_id'] = player_room_id  # todo limpar room id depois de sair do jogo
+    session['player_room_id'] = player_room_id
 
     players[player_room_id] = {"player1": session.get('username', ''), "player2": None}
 
