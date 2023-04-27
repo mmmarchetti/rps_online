@@ -333,9 +333,9 @@ def handle_player_choice(data: Dict[str, str]) -> None:
         if winner != "TIE":
             _update_winner(data[winner])
 
-        socketio.emit('result', {'result': winner, 'coices': choice}, room=room_id)
-
         notify_opponent_choice(players_choices=choice, room=room_id)
+
+        socketio.emit('result', {'result': winner, 'coices': choice}, room=room_id)
 
         choice['player1'] = None
         choice['player2'] = None

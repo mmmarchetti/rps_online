@@ -47,14 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
             opponent = 'player2';
         }
 
-        window.alert(opponent);
-        window.alert(data['choices'][opponent]);
-
         const opponent_choice = data['choices'][opponent];
-        window.alert(opponent_choice);
         
         setChoiceImage(opponent, opponent_choice);
     });
+
 
     function setChoiceImage(player, choice) {
       const imagePath = `static/images/${choice}.png`;
@@ -83,6 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             }
         }
+
+        window.alert(message);
+
+        setTimeout(() => {
+            setChoiceImage('player1', 'logo');
+            setChoiceImage('player2', 'logo');
+        }, 3000);
+
     });
 
     document.querySelector('#leave_room_btn').onclick = () => {
