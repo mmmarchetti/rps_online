@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let playerRoomId = false;
     let player1 = false;
     let player2 = false;
-    let maria = false;
   
     // Request to start the game
     socket.emit('start_game');
@@ -128,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
       playerRoomId = false;
       player1 = false;
       player2 = false;
-      maria = false;
   
       window.alert(`${data.player} left the room.`);
     });
@@ -167,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = {
         player_number: playerNumber,
         player1,
-        player2: maria ? 'MarIA' : player2,
+        player2,
         choice,
         player_room_id: playerRoomId
       };

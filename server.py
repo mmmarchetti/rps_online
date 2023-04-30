@@ -1,20 +1,24 @@
 from flask import Flask, render_template, url_for, session, redirect, jsonify, request, flash
-from werkzeug import Response
-from src.forms import RegistrationForm, LoginForm, JoinRoom, EditUserForm
-from src.database import users
 from flask_socketio import SocketIO, join_room, leave_room
 from typing import Union, Tuple, Dict, Optional
+from string import ascii_uppercase
 from dotenv import load_dotenv
+from werkzeug import Response
+from random import choices
+import bcrypt
 import uuid
 import html
 import os
-from random import choices
-from string import ascii_uppercase
-import bcrypt
+
+from src.forms import RegistrationForm, LoginForm, JoinRoom, EditUserForm
+from src.maria_brain import generate_maria_choice
+from src.database import users
 
 
 # Load environment variables from .env file
 load_dotenv()
+
+intern_players_password = os.environ.get("PASSWORD")
 
 app = Flask(__name__)
 
@@ -214,7 +218,7 @@ def signup() -> Union[redirect, None]:
     username = request.form.get('username')
     _check_valid_username(username)
 
-    user = create_player(username=request.form.get('username'),
+    user = create_player(username=username,
                          email=request.form.get('email'),
                          password=request.form.get('password'))
 
@@ -226,6 +230,8 @@ def signup() -> Union[redirect, None]:
     _check_password()
 
     users.insert_one(user)
+
+    socketio.emit("alert", {"message": f"Sucessfuly created {username} user!"})
 
     return redirect(url_for('login_page'))
 
@@ -287,8 +293,7 @@ def _get_winner(choice1: Union[str, None], choice2: Union[str, None]) -> str:
     if winning_combinations[choice1] == choice2:
         return 'player1'
 
-    else:
-        return 'player2'
+    return 'player2'
 
 
 def _update_winner(player_name: str) -> None:
@@ -301,9 +306,27 @@ def _update_winner(player_name: str) -> None:
     Returns:
         None
     """
+    try:
+        user_wins = users.find_one({"username": player_name})['wins']
+        users.find_one_and_update({"username": player_name}, {"$set": {'wins': user_wins + 1}})
 
-    user_wins = users.find_one({"username": player_name})['wins']
-    users.find_one_and_update({"username": player_name}, {"$set": {'wins': user_wins + 1}})
+    except (TypeError) as error:
+
+        if player_name in ('random_player', "maria"):
+
+            user = create_player(username=player_name,
+                                email=f"{player_name}@{player_name}.com",
+                                password=intern_players_password)
+
+
+            users.insert_one(user)
+
+            user_wins = users.find_one({"username": player_name})['wins']
+            users.find_one_and_update({"username": player_name}, {"$set": {'wins': user_wins + 1}})
+
+        else:
+            print(f"{error}. Player name not found in database")
+            raise TypeError from error
 
 
 def handle_player_choice(data: Dict[str, str]) -> None:
@@ -319,6 +342,9 @@ def handle_player_choice(data: Dict[str, str]) -> None:
 
     """
     player_number = data["player_number"]
+
+    if data["player2"] == "random_player" or data["player2"] == "maria":
+        choice["player2"] = generate_maria_choice()
 
     choice[player_number] = data['choice']
 
@@ -568,6 +594,44 @@ def create_game_page() -> Union[str, redirect]:
     session['player_room_id'] = player_room_id
 
     players[player_room_id] = {"player1": session.get('username', ''), "player2": None}
+
+    return redirect(url_for('enter_game_page', room=player_room_id))
+
+
+@app.route('/create-random-game/', methods=['POST', 'GET'])
+def create_random_game_page() -> Union[str, redirect]:
+    """
+    Render the game page with the given room id.
+
+    Args:
+        room_code (str): The room id of the game to be rendered.
+
+    Returns:
+        Union[str, redirect]: The rendered game page with the room id, or a redirect to the lobby page.
+    """
+    player_room_id = _generate_room_code(4)
+    session['player_room_id'] = player_room_id
+
+    players[player_room_id] = {"player1": session.get('username', ''), "player2": "random_player"}
+
+    return redirect(url_for('enter_game_page', room=player_room_id))
+
+
+@app.route('/create-maria-game/', methods=['POST', 'GET'])
+def create_maria_game_page() -> Union[str, redirect]:
+    """
+    Render the game page with the given room id.
+
+    Args:
+        room_code (str): The room id of the game to be rendered.
+
+    Returns:
+        Union[str, redirect]: The rendered game page with the room id, or a redirect to the lobby page.
+    """
+    player_room_id = _generate_room_code(4)
+    session['player_room_id'] = player_room_id
+
+    players[player_room_id] = {"player1": session.get('username', ''), "player2": "maria"}
 
     return redirect(url_for('enter_game_page', room=player_room_id))
 

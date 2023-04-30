@@ -25,19 +25,33 @@
         <div class="col-md-6">
           <div>Join a friend game</div>
           <form action="{{url_for('join_game_page')}}" method="POST" id="join-form">
-             <input type="text" name="player_room_id" id="room_id" placeholder="TYPE ROOM ID" form="join-form">
-             <input type="submit" class="btn btn-secondary" value="Join Friend Game" form="join-form">
+            <input type="text" name="play_maria" id="play_maria_btn" placeholder="TYPE ROOM ID" form="join-form">
+            <input type="submit" class="btn btn-secondary" value="Join Friend Game" form="join-form">
           </form>
 
         </div>
 
-<!--        <div class="col-md-6">-->
-<!--          <div>Play vs online random player</div>-->
-<!--          <div>-->
-<!--            <button type="submit" id="play_random_plyer_btn" class="btn btn-primary">Play vs Random Player</button>-->
-<!--          </div>-->
+        <div class="col-md-6">
+          <div>Play vs online random player</div>
+          <div>
+            <form action="{{url_for('create_random_game_page')}}" method="POST">
+                <input type="submit" class="btn btn-secondary" value="Play vs Random Player">
+            </form>
 
-<!--        </div>-->
+          </div>
+
+        </div>
+
+        <div class="col-md-6">
+          <div>Play vs Artificial Inteligence</div>
+          <div>
+            <form action="{{url_for('create_maria_game_page')}}" method="POST">
+                <input type="submit" class="btn btn-secondary" value="Play vs AI">
+            </form>
+
+          </div>
+
+        </div>
 
       </div>
 
