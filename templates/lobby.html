@@ -1,70 +1,39 @@
 {% extends "layout.html" %}
-<!--<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/login.css') }}">-->
 {% block content %}
-    <div class="lobby">
-      <h1>Lobby</h1>
-        <div class="col-md-6">
-          <div>Create a new game to play with a friend</div>
-          <div>
-            <form action="{{url_for('create_game_page')}}" method="POST">
-                <input type="submit" class="btn btn-secondary" value="Create Game">
-            </form>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/lobby.css') }}">
 
-          </div>
-
-        </div>
-
-<!--        <div class="col-md-6">-->
-<!--          <div>Play vs Computer AI MarIA</div>-->
-<!--          <div>-->
-<!--            <button type="submit" id="play_maria_btn" class="btn btn-primary">Play vs MarIA</button>-->
-<!--          </div>-->
-
-<!--        </div>-->
-
-        <div class="col-md-6">
-          <div>Join a friend game</div>
-          <form action="{{url_for('join_game_page')}}" method="POST" id="join-form">
-            <input type="text" name="play_maria" id="play_maria_btn" placeholder="TYPE ROOM ID" form="join-form">
-            <input type="submit" class="btn btn-secondary" value="Join Friend Game" form="join-form">
-          </form>
-
-        </div>
-
-        <div class="col-md-6">
-          <div>Play vs online random player</div>
-          <div>
-            <form action="{{url_for('create_random_game_page')}}" method="POST">
-                <input type="submit" class="btn btn-secondary" value="Play vs Random Player">
-            </form>
-
-          </div>
-
-        </div>
-
-        <div class="col-md-6">
-          <div>Play vs Artificial Inteligence</div>
-          <div>
-            <form action="{{url_for('create_maria_game_page')}}" method="POST">
-                <input type="submit" class="btn btn-secondary" value="Play vs AI">
-            </form>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    <div id="message">
-
+<div class="lobby-container">
+  <h1 class="lobby-title">Lobby</h1>
+  <div class="lobby-grid">
+    <div class="lobby-card">
+      <h3>Create a new game to play with a friend</h3>
+      <form action="{{url_for('create_game_page')}}" method="POST">
+          <input type="submit" class="btn btn-secondary" value="Create Game">
+      </form>
     </div>
 
-      <!-- Create a variable named username where we take the username from the backend. -->
-<!--      <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>-->
+    <div class="lobby-card">
+      <h3>Join a friend's game</h3>
+      <form action="{{url_for('join_game_page')}}" method="POST" id="join-form">
+        <input type="text" name="player_room_id" id="player_room_btn" placeholder="TYPE ROOM ID" form="join-form">
+        <input type="submit" class="btn btn-secondary" value="Join Friend's Game" form="join-form">
+      </form>
+    </div>
 
-<!--      <script type="text/javascript">-->
-<!--        // const username = `{{ username }}`;-->
-<!--      </script>-->
-      
-<!--      <script src="{{ url_for('static', filename='socketio.js') }}"></script>-->
+    <div class="lobby-card">
+      <h3>Play vs online random player</h3>
+      <form action="{{url_for('create_random_game_page')}}" method="POST">
+          <input type="submit" class="btn btn-secondary" value="Play vs Random Player">
+      </form>
+    </div>
+
+    <div class="lobby-card">
+      <h3>Play vs Artificial Intelligence</h3>
+      <form action="{{url_for('create_maria_game_page')}}" method="POST">
+          <input type="submit" class="btn btn-secondary" value="Play vs AI">
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock content %}

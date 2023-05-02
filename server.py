@@ -225,13 +225,14 @@ def signup() -> Union[redirect, None]:
     available_email, available_name = check_email_and_username_availability(user=user)
 
     if not available_name or not available_email:
+        flash("Username or email not avaliable")
         return redirect(url_for('signup_page'))
 
     _check_password()
 
     users.insert_one(user)
 
-    socketio.emit("alert", {"message": f"Sucessfuly created {username} user!"})
+    flash(f"User {username} sucefully created!")
 
     return redirect(url_for('login_page'))
 
@@ -343,12 +344,14 @@ def handle_player_choice(data: Dict[str, str]) -> None:
     """
     player_number = data["player_number"]
 
-    if data["player2"] == "random_player" or data["player2"] == "maria":
-        choice["player2"] = generate_maria_choice()
+    room_id = data['player_room_id']
 
     choice[player_number] = data['choice']
 
-    room_id = data['player_room_id']
+    # If the other player is Maria, generate a choice for them
+    if data["player2"] in ("random_player", "maria"):
+        socketio.emit('wait', {'person_waiting': player_number}, room=room_id)
+        choice["player2"] = generate_maria_choice()
 
     # If both players have made a choice, determine the winner and update the game state
     if choice['player1'] and choice['player2']:
@@ -468,8 +471,7 @@ def lobby_page() -> Union[str, redirect]:
 
         return render_template('lobby.html', form=join_room_form, username=username)
 
-    else:
-        return redirect(url_for("login_page"))
+    return redirect(url_for("login_page"))
 
 
 @app.route("/about/")
@@ -649,6 +651,8 @@ def join_game_page() -> Union[str, redirect]:
     """
     player_room_id = request.form.get('player_room_id')
 
+    socketio.emit('alert', {'message': f'{players}, {player_room_id}'}, room=player_room_id)
+
     if player_room_id in players:
 
         if players[player_room_id]["player2"] is None:
@@ -658,12 +662,11 @@ def join_game_page() -> Union[str, redirect]:
 
             return redirect(url_for('enter_game_page', room=player_room_id))
 
-        else:
-            flash("Sorry, this room is full. Please try another room.")
-            return redirect(url_for('lobby_page'))
-    else:
-        flash("Sorry, this room does not exist. Please try another room.")
+        flash("Sorry, this room is full. Please try another room.")
         return redirect(url_for('lobby_page'))
+
+    flash("Sorry, this room does not exist. Please try another room.")
+    return redirect(url_for('lobby_page'))
 
 
 @app.route('/game', methods=['POST', 'GET'])
@@ -681,6 +684,8 @@ def enter_game_page() -> Union[str, redirect]:
 
     if player_room_id in players:
 
+        socketio.emit('alert', {'message': f'{players}'})
+
         session_user = session.get('username', '')
         player1 = players[player_room_id]["player1"]
         player2 = players[player_room_id]["player2"]
@@ -693,6 +698,8 @@ def enter_game_page() -> Union[str, redirect]:
                                player2=player2,
                                username=session_user,
                                game_room_id=player_room_id)
+    
+    socketio.emit('alert', {'message': 'Sorry, this room does not exist. Please try another room.'})
 
     return redirect(url_for("lobby_page"))
 

@@ -1,0 +1,36 @@
+/* Lobby page styles */
+
+.lobby-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 40px 0;
+  }
+  
+  .lobby-title {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+  
+  .lobby-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 960px;
+  }
+  
+  .lobby-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .lobby-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+  }

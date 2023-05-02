@@ -91,12 +91,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.querySelector('#bottom_message').innerHTML = message;
-        window.alert(message);
+        // window.alert(message);
 
         setTimeout(() => {
         setChoiceImage('player1', 'logo');
         setChoiceImage('player2', 'logo');
+        document.querySelector('.controls').style.visibility = 'visible';
+        document.querySelector('#bottom_message').innerHTML = "Select your new move";
         }, 3000);
+
     });
 
   
@@ -122,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelector('#game_room_id').innerHTML = '';
       document.querySelector('#bottom_message').innerHTML = '';
       document.querySelector('.game').style.visibility = 'hidden';
+      document.querySelector('.controls').style.visibility = 'hidden';
       document.querySelector('.go_to_lobby').style.visibility = 'visible';
   
       playerRoomId = false;
@@ -161,6 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const playerNumber = (player1 === username) ? 'player1' : 'player2';
   
       setChoiceImage(playerNumber, choice);
+
+      document.querySelector('.controls').style.visibility = 'hidden';
   
       const payload = {
         player_number: playerNumber,
