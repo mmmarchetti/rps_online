@@ -2,6 +2,9 @@
  * Main function to initialize the game.
  */
 document.addEventListener('DOMContentLoaded', () => {
+
+  window.addEventListener('beforeunload', confirmExit);
+
     // Connect to websocket
     const socket = io.connect(`${location.protocol}//${document.domain}:${location.port}`, { transports: ['websocket'] });
   
@@ -66,6 +69,45 @@ document.addEventListener('DOMContentLoaded', () => {
       const imagePath = `static/images/${choice}.png`;
       document.querySelector(`#${player}_choice`).src = imagePath;
     }
+
+    /**
+     * Confirm exit from the game.
+     */
+    function confirmExit(event) {
+      if (playerRoomId) {
+        const confirmationMessage = 'Are you sure you want to leave the game? The room will be closed.';
+        event.returnValue = confirmationMessage;
+
+        const confirmed = window.confirm(confirmationMessage);
+        if (confirmed) {
+          const player = (username === player1) ? 'player1' : 'player2';
+          socket.emit('leave_game_page', { player, player_room_id: playerRoomId });
+        }
+        
+        /**
+       * Clear the game when the room is closed.
+       */
+      socket.on('clear_game_event', data => {
+        document.querySelector('#player1_score').innerHTML = '0';
+        document.querySelector('#player2_score').innerHTML = '0';
+        document.querySelector('#message').innerHTML = 'The game room has closed.';
+        document.querySelector('#game_room_id').innerHTML = '';
+        document.querySelector('#bottom_message').innerHTML = '';
+        document.querySelector('.game').style.visibility = 'hidden';
+        document.querySelector('.controls').style.visibility = 'hidden';
+        document.querySelector('.go_to_lobby').style.visibility = 'visible';
+    
+        playerRoomId = false;
+        player1 = false;
+        player2 = false;
+    
+        window.alert(`${data.player} left the room.`);
+      });
+
+        return confirmationMessage;
+      }
+    }
+    
   
       /**
      * Handle the result of the game received from the server.

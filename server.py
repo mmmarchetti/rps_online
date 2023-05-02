@@ -651,8 +651,6 @@ def join_game_page() -> Union[str, redirect]:
     """
     player_room_id = request.form.get('player_room_id')
 
-    socketio.emit('alert', {'message': f'{players}, {player_room_id}'}, room=player_room_id)
-
     if player_room_id in players:
 
         if players[player_room_id]["player2"] is None:
